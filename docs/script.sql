@@ -1,121 +1,144 @@
-USE [master]
-GO
+Create Database RaceDay;
 
-/****** Object:  Database [RaceDay]    Script Date: 9/2/2026 11:22:09 AM ******/
-CREATE DATABASE [RaceDay]
- CONTAINMENT = NONE
- ON  PRIMARY 
-( NAME = N'RaceDay', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL17.SQLEXPRESS02\MSSQL\DATA\RaceDay.mdf' , SIZE = 8192KB , MAXSIZE = UNLIMITED, FILEGROWTH = 65536KB )
- LOG ON 
-( NAME = N'RaceDay_log', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL17.SQLEXPRESS02\MSSQL\DATA\RaceDay_log.ldf' , SIZE = 8192KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
- WITH CATALOG_COLLATION = DATABASE_DEFAULT, LEDGER = OFF
-GO
+CREATE TABLE Organizers (
+    OrganizerID INT IDENTITY(1,1) PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    Phone VARCHAR(20),
+    PasswordHash VARCHAR(255) NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
 
-IF (1 = FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'))
-begin
-EXEC [RaceDay].[dbo].[sp_fulltext_database] @action = 'enable'
-end
-GO
+CREATE TABLE Venues (
+    VenueID INT IDENTITY(1,1) PRIMARY KEY,
+    VenueName VARCHAR(100) NOT NULL,
+    Address VARCHAR(200) NOT NULL,
+    City VARCHAR(50) NOT NULL,
+    Country VARCHAR(50) DEFAULT 'South Africa',
+    Capacity INT
+);
 
-ALTER DATABASE [RaceDay] SET ANSI_NULL_DEFAULT OFF 
-GO
+CREATE TABLE Events (
+    EventID INT IDENTITY(1,1) PRIMARY KEY,
+    EventName VARCHAR(100) NOT NULL,
+    Description VARCHAR(500),
+    EventDate DATE NOT NULL,
+    Status VARCHAR(20) DEFAULT 'Upcoming',
+    OrganizerID INT NOT NULL,
+    VenueID INT NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (OrganizerID) REFERENCES Organizer(OrganizerID),
+    FOREIGN KEY (VenueID) REFERENCES Venue(VenueID)
+);
 
-ALTER DATABASE [RaceDay] SET ANSI_NULLS OFF 
-GO
+CREATE TABLE Categories (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    EventID INT NOT NULL,
+    CategoryName VARCHAR(50) NOT NULL,
+    DistanceKm DECIMAL(5,2) NOT NULL,
+    AgeGroup VARCHAR(20),
+    GenderRestriction VARCHAR(10) CHECK (GenderRestriction IN ('Male', 'Female', 'Open')),
+    EntryFee DECIMAL(10,2) DEFAULT 0.00,
+    MaxParticipants INT,
+    FOREIGN KEY (EventID) REFERENCES Event(EventID)
+);
 
-ALTER DATABASE [RaceDay] SET ANSI_PADDING OFF 
-GO
+CREATE TABLE Participants (
+    ParticipantID INT IDENTITY(1,1) PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    Phone VARCHAR(20),
+    Gender VARCHAR(10) CHECK (Gender IN ('Male', 'Female')),
+    DateOfBirth DATE,
+    PasswordHash VARCHAR(255) NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
 
-ALTER DATABASE [RaceDay] SET ANSI_WARNINGS OFF 
-GO
+CREATE TABLE Enrollments (
+    EnrollmentID INT IDENTITY(1,1) PRIMARY KEY,
+    ParticipantID INT NOT NULL,
+    CategoryID INT NOT NULL,
+    EnrollmentDate DATETIME DEFAULT GETDATE(),
+    Status VARCHAR(20) DEFAULT 'Registered',
+    PaymentStatus VARCHAR(20) DEFAULT 'Pending',
+    FOREIGN KEY (ParticipantID) REFERENCES Participant(ParticipantID),
+    FOREIGN KEY (CategoryID) REFERENCES Category(CategoryID)
+);
 
-ALTER DATABASE [RaceDay] SET ARITHABORT OFF 
-GO
+CREATE TABLE Result (
+    ResultsID INT IDENTITY(1,1) PRIMARY KEY,
+    EnrollmentID INT NOT NULL,
+    FinishTime TIME,
+    Position INT,
+    Pace VARCHAR(10),
+    RaceStatus VARCHAR(20) DEFAULT 'Pending',
+    FOREIGN KEY (EnrollmentID) REFERENCES Enrollment(EnrollmentID)
+);
 
-ALTER DATABASE [RaceDay] SET AUTO_CLOSE ON 
-GO
+INSERT INTO Organizers (Name, Email, Phone, PasswordHash) VALUES
+('Comrades Marathon Association', 'info@comrades.com', '033 345 6789', 'hashed_password_1'),
+('Two Oceans Marathon', 'info@twooceans.com', '021 123 4567', 'hashed_password_2');
 
-ALTER DATABASE [RaceDay] SET AUTO_SHRINK OFF 
-GO
+INSERT INTO Venues (VenueName, Address, City, Country, Capacity) VALUES
+('Moses Mabhida Stadium', '44 Isaiah Ntshangase Rd, Stamford Hill', 'Durban', 'South Africa', 56000),
+('Newlands Stadium', '49 Boundary Rd, Newlands', 'Cape Town', 'South Africa', 50000),
+('OR Tambo Stadium', '44 Eleazer St, Wattville', 'Johannesburg', 'South Africa', 35000);
 
-ALTER DATABASE [RaceDay] SET AUTO_UPDATE_STATISTICS ON 
-GO
+INSERT INTO Events (EventName, Description, EventDate, Status, OrganizerID, VenueID) VALUES
+('Comrades Marathon', 'The ultimate human race - 89km from Durban to Pietermaritzburg', '2026-06-16', 'Upcoming', 1, 1),
+('Two Oceans Marathon', 'The world''s most beautiful marathon - 56km around Cape Town', '2026-04-18', 'Upcoming', 2, 2),
+('Soweto Marathon', 'Iconic 42km race through the streets of Soweto', '2026-11-07', 'Upcoming', 1, 3);
 
-ALTER DATABASE [RaceDay] SET CURSOR_CLOSE_ON_COMMIT OFF 
-GO
+INSERT INTO Categories (EventID, CategoryName, DistanceKm, AgeGroup, GenderRestriction, EntryFee, MaxParticipants) VALUES
+(1, '42km Male', 42.20, '18-39', 'Male', 350.00, 5000),
+(1, '42km Female', 42.20, '18-39', 'Female', 350.00, 3000),
+(1, '21km Male', 21.10, '18-39', 'Male', 250.00, 3000),
+(1, '21km Female', 21.10, '18-39', 'Female', 250.00, 2000),
+(1, '10km Open', 10.00, 'Open', 'Open', 150.00, 2000);
 
-ALTER DATABASE [RaceDay] SET CURSOR_DEFAULT  GLOBAL 
-GO
+INSERT INTO Categories (EventID, CategoryName, DistanceKm, AgeGroup, GenderRestriction, EntryFee, MaxParticipants) VALUES
+(2, '56km Male', 56.00, '18-39', 'Male', 400.00, 3000),
+(2, '56km Female', 56.00, '18-39', 'Female', 400.00, 2000),
+(2, '21km Open', 21.10, 'Open', 'Open', 200.00, 4000);
 
-ALTER DATABASE [RaceDay] SET CONCAT_NULL_YIELDS_NULL OFF 
-GO
+INSERT INTO Categories (EventID, CategoryName, DistanceKm, AgeGroup, GenderRestriction, EntryFee, MaxParticipants) VALUES
+(3, '42km Male', 42.20, '18-39', 'Male', 300.00, 4000),
+(3, '42km Female', 42.20, '18-39', 'Female', 300.00, 3000),
+(3, '10km Open', 10.00, 'Open', 'Open', 100.00, 3000);
 
-ALTER DATABASE [RaceDay] SET NUMERIC_ROUNDABORT OFF 
-GO
+INSERT INTO Participants (Name, Email, Phone, Gender, DateOfBirth, PasswordHash) VALUES
+('Thabo Mokoena', 'thabo.m@email.com', '082 123 4567', 'Male', '1995-03-15', 'hashed_password_3'),
+('Sarah van der Merwe', 'sarah.vdm@email.com', '083 987 6543', 'Female', '1992-07-22', 'hashed_password_4');
 
-ALTER DATABASE [RaceDay] SET QUOTED_IDENTIFIER OFF 
-GO
+INSERT INTO Enrollment (ParticipantID, CategoryID, EnrollmentDate, Status, PaymentStatus) VALUES
+(1, 1, GETDATE(), 'Registered', 'Paid'),
+(2, 8, GETDATE(), 'Registered', 'Paid'),
+(1, 10, GETDATE(), 'Registered', 'Pending');
 
-ALTER DATABASE [RaceDay] SET RECURSIVE_TRIGGERS OFF 
-GO
+INSERT INTO Results (EnrollmentID, FinishTime, Position, Pace, RaceStatus) VALUES
+(1, '05:20:45', 245, '5:30/km', 'Finished'),
+(2, '02:15:30', 89, '6:25/km', 'Finished');
 
-ALTER DATABASE [RaceDay] SET  ENABLE_BROKER 
-GO
 
-ALTER DATABASE [RaceDay] SET AUTO_UPDATE_STATISTICS_ASYNC OFF 
-GO
+SELECT * FROM Organizer;
 
-ALTER DATABASE [RaceDay] SET DATE_CORRELATION_OPTIMIZATION OFF 
-GO
 
-ALTER DATABASE [RaceDay] SET TRUSTWORTHY OFF 
-GO
+SELECT * FROM Venue;
 
-ALTER DATABASE [RaceDay] SET ALLOW_SNAPSHOT_ISOLATION OFF 
-GO
 
-ALTER DATABASE [RaceDay] SET PARAMETERIZATION SIMPLE 
-GO
+SELECT * FROM Event;
 
-ALTER DATABASE [RaceDay] SET READ_COMMITTED_SNAPSHOT OFF 
-GO
 
-ALTER DATABASE [RaceDay] SET HONOR_BROKER_PRIORITY OFF 
-GO
+SELECT * FROM Category;
 
-ALTER DATABASE [RaceDay] SET RECOVERY SIMPLE 
-GO
 
-ALTER DATABASE [RaceDay] SET  MULTI_USER 
-GO
+SELECT * FROM Participant;
 
-ALTER DATABASE [RaceDay] SET PAGE_VERIFY CHECKSUM  
-GO
 
-ALTER DATABASE [RaceDay] SET DB_CHAINING OFF 
-GO
+SELECT * FROM Enrollment;
 
-ALTER DATABASE [RaceDay] SET FILESTREAM( NON_TRANSACTED_ACCESS = OFF ) 
-GO
 
-ALTER DATABASE [RaceDay] SET TARGET_RECOVERY_TIME = 60 SECONDS 
-GO
 
-ALTER DATABASE [RaceDay] SET DELAYED_DURABILITY = DISABLED 
-GO
+SELECT * FROM Results;
 
-ALTER DATABASE [RaceDay] SET OPTIMIZED_LOCKING = OFF 
-GO
-
-ALTER DATABASE [RaceDay] SET ACCELERATED_DATABASE_RECOVERY = OFF  
-GO
-
-ALTER DATABASE [RaceDay] SET QUERY_STORE = ON
-GO
-
-ALTER DATABASE [RaceDay] SET QUERY_STORE (OPERATION_MODE = READ_WRITE, CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 30), DATA_FLUSH_INTERVAL_SECONDS = 900, INTERVAL_LENGTH_MINUTES = 60, MAX_STORAGE_SIZE_MB = 1000, QUERY_CAPTURE_MODE = AUTO, SIZE_BASED_CLEANUP_MODE = AUTO, MAX_PLANS_PER_QUERY = 200, WAIT_STATS_CAPTURE_MODE = ON)
-GO
-
-ALTER DATABASE [RaceDay] SET  READ_WRITE 
-GO
 
